@@ -1,8 +1,8 @@
-name: Docker Compose Up for Production
+name: Home Assistant for Production
 
 on:
   push:
-    branches: [ production ]
+    branches: [ main ]
 
 jobs:
   run:
