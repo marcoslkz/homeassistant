@@ -1,0 +1,48 @@
+name: Docker Compose Up for Production
+
+on:
+  push:
+    branches: [ production ]
+
+jobs:
+  run:
+    runs-on: self-hosted
+    env:
+      TZ: America/Sao_paulo
+      MAILMANAGER: ${{ secrets.MAILMANAGER }}
+      SITE_PATH: ${{ secrets.PORTAINER_PATH }}
+      DOMAIN_NAME: ${{ secrets.PORTAINER_URL }}
+      VOL_PROXY: ${{ secrets.VOL_PROXY }}
+      VOL_PORTAINER: ${{ secrets.VOL_PORTAINER }}
+      VOL_CROWDSECDB: ${{ secrets.VOL_PROXY }}/crowdsec_data
+      VOL_CROWDSECETC: ${{ secrets.VOL_PROXY }}/crowdsec_etc
+      CROWDSEC_TRAEFIK: ${{ secrets.CROWDSEC_TRAEFIK }}
+    steps:
+      - uses: actions/checkout@v3
+
+      #- name: Login to Docker Hub (optional)
+      #  run: |
+      #    echo "$DOCKER_HUB_USERNAME:$DOCKER_HUB_PASSWORD" | docker login --username --password-stdin
+
+      - name: Prepare volume
+        if: always()
+        run: |
+         mkdir -pv $VOL_PROXY $VOL_PORTAINER $VOL_CROWDSECDB $VOL_CROWDSECETC
+         sed -i "s,replace-me,${CROWDSEC_TRAEFIK},g" traefik.yml
+         sed -i "s,REPLACE_DOMAIN,${DOMAIN_NAME},g" traefik.yml         
+         cp -fv traefik.yml $VOL_PROXY
+         cp -fv acquis.yaml $VOL_CROWDSECETC
+
+      - name: Update Docker Compose
+        if: always()
+        run: docker compose pull
+
+      #- name: Stop Docker Compose
+      #  if: always()
+      #  run: docker compose down --remove-orphans
+        
+      - name: Run Docker Compose Up
+        run: docker compose up -d --wait
+     
+      - name: Views logs
+        run: docker compose logs --tail 30
